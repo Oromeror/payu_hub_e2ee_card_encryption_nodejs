@@ -69,7 +69,7 @@ async function generateEncryptedCard(req: Request, res: Response, next: NextFunc
                 .encrypt()
 
             return res.status(200).json({
-                ciphertext: jwe
+                jwe: jwe
             });
 
         } else {
