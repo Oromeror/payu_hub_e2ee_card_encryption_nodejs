@@ -4,7 +4,7 @@ import axios, { AxiosResponse } from 'axios';
 import { Card } from '../../interfaces/card';
 import { Key } from '../../interfaces/key'
 
-import * as jose from 'jose'
+const {JWE} = require('jose');
 
 /*
  * Generates ciphertext with card data encrypted
@@ -74,7 +74,7 @@ async function generateEncryptedCard(req: Request, res: Response, next: NextFunc
             };
 
             // Encrypting the card data. Making sure to add in the date object as well. 
-            const ciphertext = jose.JWE.encrypt(CREDIT_CARD_DATA, JWK_KEY.jwk.n, Object.assign(JWK_KEY.protected_headers, date));
+            const ciphertext = JWE.encrypt(CREDIT_CARD_DATA, JWK_KEY.jwk, Object.assign(JWK_KEY.protected_headers, date));
 
             return res.status(200).json({
                 ciphertext: ciphertext
