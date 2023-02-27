@@ -40,36 +40,44 @@ async function generateEncryptedCard(req: Request, res: Response, next: NextFunc
         if (result.status === 200) {
             const key: Key = result.data;
             
-            const rsaPublicKey = await jose.importJWK({
-                e: key.jwk.e,
-                n: key.jwk.n,
-                kty: key.jwk.kty,
-                kid: key.jwk.kid,
-                use: key.jwk.use,
-                alg: 'RS256'
-                })
-            
-            const TOKEN_TTL_MIN = 10; // Used to compute the expiration date that will be added to protected_headers 
+            console.log(key);
+            //const JWK_KEY = key;
+
+            const JWK_KEY = {
+                "jwk": {
+                    e: key.jwk.e,
+                    n: key.jwk.n,
+                    kty: key.jwk.kty,
+                    kid: key.jwk.kid,
+                    use: key.jwk.use,
+                },
+                "created": key.created,
+                "version": key.version,
+                "key_type": key.key_type,
+                "name": key.name,
+                "protected_headers": {
+                    "kid": key.protected_headers.kid,
+                    "enc": key.protected_headers.enc
+                }
+            };
+
+            const TOKEN_TTL_MIN = 10; // Used to compute the expiration date that will be added to protected_headers
             const CREDIT_CARD_DATA = JSON.stringify(card);
             const createdDate = new Date();  // Creating the date object so we can add it to protected_headers
             const expiredDate = new Date(createdDate);
-           
-            expiredDate.setMinutes(expiredDate.getMinutes() + TOKEN_TTL_MIN);
 
-            const jwe = await new jose.GeneralEncrypt( new TextEncoder().encode(CREDIT_CARD_DATA))
-                .setProtectedHeader({
-                    jwk: key.jwk,
-                    enc: key.protected_headers.enc,
-                    kid: key.protected_headers.kid,
-                    iat: createdDate.getTime(),
-                    exp: expiredDate.getTime(),
-                    alg: 'RSA-OAEP-384'
-                })
-                .addRecipient(rsaPublicKey)
-                .encrypt()
+            // Creating the date object so we can add it to protected_headers
+            expiredDate.setMinutes(expiredDate.getMinutes() + TOKEN_TTL_MIN);
+            const date = {
+                iat: createdDate.getTime(),
+                exp: expiredDate.getTime(),
+            };
+
+            // Encrypting the card data. Making sure to add in the date object as well. 
+            const ciphertext = jose.JWE.encrypt(CREDIT_CARD_DATA, JWK_KEY.jwk.n, Object.assign(JWK_KEY.protected_headers, date));
 
             return res.status(200).json({
-                jwe: jwe
+                ciphertext: ciphertext
             });
 
         } else {
