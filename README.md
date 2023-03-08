@@ -4,6 +4,11 @@ This project was generated making use of [Node.js](https://nodejs.org/)
 
 This repository is based on the implementation of a very simple Node.js API implementation of PayU Hub [End To End Encryption](https://developers.paymentsos.com/docs/security/e2ee.html).
 
+## Requirements
+
+- Python for virtual environment (optional).
+- NodeJS
+
 ## Installation
 
 - Create a [virtual environment](https://pypi.org/project/nodeenv/) with the command
