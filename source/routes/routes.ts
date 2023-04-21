@@ -1,9 +1,16 @@
-/** source/routes/posts.ts */
-import express from 'express';
-import card from './controllers/card';
+// source/routes/routes.ts
+
+import express from "express";
+import CiphertextService from "./controllers/card-encryption";
 
 const router = express.Router();
 
-router.post('/card/ciphertext/:account_id/keys/:key_name/versions/:key_version', card.generateEncryptedCard);
+// Instance of CiphertextService
+const ciphertextService = new CiphertextService();
+
+router.post(
+  "/card-encryption/:account_id/keys/:key_name/versions/:key_version",
+  ciphertextService.generateEncryptedCard
+);
 
 export = router;
