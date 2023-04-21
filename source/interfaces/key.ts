@@ -13,5 +13,6 @@ export interface Key {
     "protected_headers": {
         "kid": string;
         "enc": string
+        [key: string]: any;
     }
 }
