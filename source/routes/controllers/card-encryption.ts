@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import axios, { AxiosResponse } from "axios";
-import { JWE, JSONWebKey } from "jose";
+import * as jose from "jose";
 
 import { Card } from "../../interfaces/card";
 import { Key } from "../../interfaces/key";
@@ -36,43 +36,43 @@ class CiphertextService {
         Authorization: `Bearer ${sessionToken}`,
       },
     };
-    const result: AxiosResponse = await axios.get(url, config);
-    return result.data;
+    try {
+      const result: AxiosResponse = await axios.get(url, config);
+      return result.data;
+    } catch (error) {
+      console.error("Request error:", error);
+      throw error;
+    }
   }
 
   /*
    * Generates encrypted card using JOSE framework - PaymentsOs E2E Encryption
    * docs: https://developers.paymentsos.com/docs/security/e2ee.html
    */
-  private encryptCardData(key: Key, card: Card): string {
-    // Card data to encrypt
-    const CREDIT_CARD_DATA = JSON.stringify(card);
-
-    // Used to compute the expiration date that will be added to protected_headers
-    const TOKEN_TTL_MIN = 10;
+  private async encryptCardData(key: Key, card: Card): Promise<string> {
+    const TOKEN_TTL_MIN = 10; // Used to compute the expiration date that will be added to protected_headers
+    const CREDIT_CARD_DATA = JSON.stringify(card); // Card data to encrypt
+    const JWK_KEY = key; // Encryption key used to generate card encripted
 
     // Creating the date object so we can add it to protected_headers
     const createdDate = new Date();
     const expiredDate = new Date(createdDate);
-
-    // Creating the date object so we can add it to protected_headers
     expiredDate.setMinutes(expiredDate.getMinutes() + TOKEN_TTL_MIN);
-    const date = {
-      iat: createdDate.getTime(),
-      exp: expiredDate.getTime(),
-    };
+    const iat = createdDate.getTime();
+    const exp = expiredDate.getTime();
 
-    // Adding the iat and exp to the protected headers
-    const protected_headers = Object.assign(key.protected_headers, date);
-
-    // Jason web key
-    const jwkKey = key.jwk as JSONWebKey;
-
-    return JWE.encrypt(
-      CREDIT_CARD_DATA, // clear text
-      jwkKey, // key
-      protected_headers // protected headers with iat and exp
-    );
+    // Encrypting the card data
+    const rsaPublicKey = await jose.importJWK(JWK_KEY.jwk);
+    const jwe = await new jose.CompactEncrypt(new TextEncoder().encode(CREDIT_CARD_DATA))
+      .setProtectedHeader({
+        alg: "RSA-OAEP-256",
+        enc: JWK_KEY.protected_headers.enc,
+        kid: JWK_KEY.protected_headers.kid,
+        iat,
+        exp,
+      })
+      .encrypt(rsaPublicKey);
+    return jwe;
   }
 
   /*
@@ -87,7 +87,7 @@ class CiphertextService {
     try {
       const sessionToken = await this.getSessionToken();
       const jwkKey: Key = await this.retrieveKey(req, sessionToken);
-      const ciphertext = this.encryptCardData(jwkKey, {
+      const ciphertext = await this.encryptCardData(jwkKey, {
         credit_card_number: req.body.credit_card_number,
         cvv: req.body.cvv,
       });
